@@ -1,0 +1,118 @@
+<script src="https://smtpjs.com/v3/smtp.js"></script> 
+
+<script>
+
+window.watsonAssistantChatOptions = {
+    integrationID: "<INTEGRATION_ID>", // The ID of this integration.
+    region: "<REGION_ID>", // The region your integration is hosted in.
+    serviceInstanceID: "<INSTANCE_ID>", // The ID of your service instance. 
+    onLoad: function(instance) {
+        instance.on({type: "window:close", handler: windowClosed });
+        instance.on({type: "history:end", handler: histHandler });
+        instance.on({ type: "send", handler: msgSent });
+        instance.on({ type: "receive", handler: msgReceived });
+        instance.render();
+    }
+};
+
+function sendEmail(emailAddr, bodyText) {
+    subject = genSubject();
+    Email.send({
+        Host : "<SMTP_HOST>",
+        Username : "<SMTP_USERNAME>",
+        Password : "<SMTP_PASSWOD>",
+        To : emailAddr,
+        From : "<FROM_ADDRESS>",
+        Subject : subject,
+        Body : bodyText,
+    })
+    .then((message) => {
+        if ('OK' != message) 
+            alert(message);
+    });
+}
+
+const baseHistoryText = "<html><h2>Transcript of your conversation with Watson.</h2>";
+var historyText = baseHistoryText;
+
+function watsonMsg(text) {
+    historyText += "<p><b>Watson Typed: </b>" + text;    
+}
+
+function userMsg(text) {
+    historyText += "<p><b>User Typed: </b>" + text;
+}
+
+function histHandler(event){
+    console.log('history end called', event);
+    historyText = baseHistoryText;
+    event.messages.forEach(histItem);
+}
+
+function histItem(message) {
+    console.log(message);
+    if ('input' in message) {
+        userMsg(message['input']['text']);
+    } else if ('output' in message) {
+        replies = message['output']['generic'];
+        for (const reply of replies) { 
+            if (reply['response_type'] == "text") { //ToDo handle different types of response
+                watsonMsg(reply['text']);
+            }
+        }
+    }
+    console.log(historyText);
+}
+
+function msgSent(event) {
+    console.log("Message sent event", event);
+    var text = event['data']['input']['text'];
+    console.log("message content", text);
+    userMsg(text);
+}
+
+function msgReceived(event) {
+    console.log("Message received event", event);
+    messages = event['data']['output']['generic'];
+    for (let i = 0; i<messages.length; i++) {
+        if ('text' == messages[i]['response_type']) {
+            console.log("Text message",  messages[i]['text']);
+            watsonMsg(messages[i]['text']);
+        } else {
+            console.log('Ignoring message of type', messages[i]['response_type']); //ToDo handle different types of response
+        }
+    }
+    
+}
+
+function genSubject () {
+    var currentdate = new Date(); 
+    var subjectText = "Transcript from Watson conversation at " + currentdate.getDate() + "/"
+                + (currentdate.getMonth()+1)  + "/" 
+                + currentdate.getFullYear() + " @ "  
+                + currentdate.getHours() + ":"  
+                + currentdate.getMinutes() + ":" 
+                + currentdate.getSeconds();
+    return subjectText;
+}
+     
+function windowClosed(event) {
+    console.log("Window closed");
+    var emailAddr = window.prompt("If you would like a transcript of this session, enter your email address and hit OK - otherwise click cancel: ");
+    if (null == emailAddr) {
+        console.log("No email will be sent");
+    } else {
+        console.log("Sending email to:", emailAddr);
+        sendEmail(emailAddr, historyText);
+    }
+        
+}
+
+setTimeout(function () {
+  const t = document.createElement('script');
+  t.src="https://web-chat.global.assistant.watson.appdomain.cloud/versions/" + (window.watsonAssistantChatOptions.clientVersion || 'latest') + "/WatsonAssistantChatEntry.js";
+  document.head.appendChild(t);
+
+});
+</script>
+  
