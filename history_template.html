@@ -7,8 +7,8 @@ window.watsonAssistantChatOptions = {
     region: "<REGION_ID>", // The region your integration is hosted in.
     serviceInstanceID: "<INSTANCE_ID>", // The ID of your service instance. 
     onLoad: function(instance) {
-        instance.on({type: "window:close", handler: windowClosed });
-        instance.on({type: "history:end", handler: histHandler });
+        instance.on({type: "window:open", handler: windowOpened }); // comment out this line if you don't want a button marked 'email transcript'
+        instance.on({type: "window:close", handler: windowClosed });// comment out this line if you don't want to automatically email transcript when         instance.on({type: "history:end", handler: histHandler });
         instance.on({ type: "send", handler: msgSent });
         instance.on({ type: "receive", handler: msgReceived });
         instance.render();
@@ -95,7 +95,25 @@ function genSubject () {
                 + currentdate.getSeconds();
     return subjectText;
 }
-     
+
+var buttonCreated = false;    
+function windowOpened(event) {
+    console.log("Window opened");
+
+    // Code to add a button
+    if (!buttonCreated) {
+        var waDiv = document.getElementById("WACWidget");
+        var button = document.createElement("BUTTON");
+        button.innerHTML = "Email Transcript";
+        button.onclick = function () {
+            windowClosed();
+        };
+        button.style.height = '30px';
+        waDiv.appendChild(button);
+        buttonCreated = true;
+    }
+}
+  
 function windowClosed(event) {
     console.log("Window closed");
     var emailAddr = window.prompt("If you would like a transcript of this session, enter your email address and hit OK - otherwise click cancel: ");
