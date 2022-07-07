@@ -55,9 +55,9 @@ function histItem(message) {
         userMsg(message['input']['text']);
     } else if ('output' in message) {
         replies = message['output']['generic'];
-        for (const reply of replies) { 
-            if (reply['response_type'] == "text") { //ToDo handle different types of response
-                watsonMsg(reply['text']);
+        if (null != replies) {
+            for (const reply of replies) {
+                itemReceived(reply);
             }
         }
     }
@@ -71,16 +71,78 @@ function msgSent(event) {
     userMsg(text);
 }
 
+function itemReceived(item) {
+    if (null == item)
+        return; // Ignore empty replies
+    if ('text' == item['response_type']) {
+        console.log("Text message",  item['text']);
+        watsonMsg(item['text']);
+    } else if ('option' == item['response_type']) {
+        var htmlText = '';
+        if ('title' in item) {
+            htmlText += '<h3>'+item['title']+'</h3>';
+            console.log('Option title:', item['title']);
+        }
+        if ('description' in item) {
+            htmlText += '<br/>'+item['description']+'<br/>';
+            console.log('Option description:', item['title']);
+        }
+        for (const option of item['options']) {
+            console.log('Option:', option['label']);
+            htmlText += '<button>'+option['label']+'</button>';
+        }
+        watsonMsg(htmlText);
+    } else if ('video' == item['response_type']) {
+        console.log('video response', item['source']);
+        htmlText = '<br/>video: ';
+        if ('source' in item)
+            htmlText += wrapLink(item['source']);
+        watsonMsg(htmlText);
+    } else if ('audio' == item['response_type']) {
+        console.log('audio response', item['source']);
+        htmlText = '<br/>audio: ';
+        if ('source' in item)
+            htmlText += wrapLink(item['source']);
+        watsonMsg(htmlText);
+    } else if ('image' == item['response_type']) {
+        console.log('image response', item['source']);
+        htmlText = '';
+        if ('title' in item)
+            htmlText += '<h3>'+item['title']+'</h3>';
+        if ('description' in item)
+            htmlText += item['description']+'<br/>';
+        htmlText += '<img src="'+item['source']+'" ';
+        if ('alt_text' in item)
+            htmlText += 'alt="'+item['alt_text']+'"';
+        htmlText += ' width="200" height="200">';
+        watsonMsg(htmlText);
+    } else if ('iframe' == item['response_type']) {
+        console.log('iframe');
+        htmlText = '<iframe ';
+        if ('source' in item)
+            htmlText += ' src="'+item['source']+'" ';
+        if ('title' in item)
+            htmlText += ' title="'+item['title']+'" ';
+        htmlText += '></iframe>';
+        watsonMsg(htmlText);
+    } else if ('pause' == item['response_type']) {
+        console.log('Ignoring pause element in response');
+    } else {
+        console.log('response type '+item['response_type']);
+        watsonMsg('response type '+item['response_type']);
+    }
+}
+
+function wrapLink(linkText) {
+    var htmlText = '<a href="'+linkText+'">'+linkText+'</a>';
+    return htmlText;
+}
+
 function msgReceived(event) {
     console.log("Message received event", event);
     messages = event['data']['output']['generic'];
     for (let i = 0; i<messages.length; i++) {
-        if ('text' == messages[i]['response_type']) {
-            console.log("Text message",  messages[i]['text']);
-            watsonMsg(messages[i]['text']);
-        } else {
-            console.log('Ignoring message of type', messages[i]['response_type']); //ToDo handle different types of response
-        }
+        itemReceived(messages[i]);
     }
     
 }
@@ -113,10 +175,11 @@ function windowOpened(event) {
         buttonCreated = true;
     }
 }
-  
+
 function windowClosed(event) {
     console.log("Window closed");
     var emailAddr = window.prompt("If you would like a transcript of this session, enter your email address and hit OK - otherwise click cancel: ");
+//    var emailAddr = "brian_odonovan@ie.ibm.com";
     if (null == emailAddr) {
         console.log("No email will be sent");
     } else {
@@ -130,7 +193,6 @@ setTimeout(function () {
   const t = document.createElement('script');
   t.src="https://web-chat.global.assistant.watson.appdomain.cloud/versions/" + (window.watsonAssistantChatOptions.clientVersion || 'latest') + "/WatsonAssistantChatEntry.js";
   document.head.appendChild(t);
-
 });
 </script>
   
